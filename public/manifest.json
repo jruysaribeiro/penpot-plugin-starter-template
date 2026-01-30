@@ -1,6 +1,6 @@
 {
-  "name": "Penpot starter plugin",
+  "name": "Penpot AI Designer",
   "code": "plugin.js",
-  "description": "This is a starter plugin for Penpot",
+  "description": "Generate SVG designs from text descriptions using Gemini AI",
   "permissions": ["content:read", "content:write"]
 }

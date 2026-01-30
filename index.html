@@ -1,24 +1,171 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Penpot plugin example</title>
+    <title>Penpot AI Designer</title>
   </head>
   <body>
-    <p>Penpot plugin starter template</p>
+    <h2>AI Design Generator</h2>
 
-    <p>
-      Checkout the
-      <a target="_blank" href="https://help.penpot.app/plugins/"
-        >documentation</a
+    <div class="form-group" id="apiKeyContainer">
+      <label for="apiKey">Gemini API Key</label>
+      <input
+        type="password"
+        id="apiKey"
+        placeholder="Enter your Gemini API key"
+        data-input="apiKey"
+      />
+      <small
+        >Your key is stored locally and never shared.
+        <a href="https://aistudio.google.com/app/apikey" target="_blank"
+          >Get one free →</a
+        ></small
       >
-      to get started.
-    </p>
+    </div>
 
-    <button type="button" data-appearance="primary" data-handler="create-text">
-      Create text
+    <div class="form-group">
+      <label for="description">Design Description</label>
+      <textarea
+        id="description"
+        rows="3"
+        placeholder="Describe what you want to create..."
+        data-input="description"
+      ></textarea>
+    </div>
+
+    <details class="options-section">
+      <summary>✨ Style Options & Filters</summary>
+
+      <div class="form-group">
+        <label>Quick Examples</label>
+        <div class="chip-group" id="examplePrompts">
+          <button
+            type="button"
+            class="chip"
+            data-example="Modern rocket logo with geometric shapes"
+          >
+            🚀 Rocket Logo
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-example="Minimalist sun icon with warm gradient"
+          >
+            ☀️ Sun Icon
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-example="Abstract geometric pattern with triangles"
+          >
+            🔷 Geometric Pattern
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-example="Coffee cup with steam, line art style"
+          >
+            ☕ Coffee Cup
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-example="Mountain landscape with sunset colors"
+          >
+            🏔️ Landscape
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-example="Tech circuit board pattern background"
+          >
+            ⚡ Tech Pattern
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="stylePreset">Art Style</label>
+        <select id="stylePreset">
+          <option value="">Auto (AI decides)</option>
+          <option value="minimalist">Minimalist</option>
+          <option value="modern">Modern</option>
+          <option value="abstract">Abstract</option>
+          <option value="geometric">Geometric</option>
+          <option value="line-art">Line Art</option>
+          <option value="flat-design">Flat Design</option>
+          <option value="gradient">Gradient-heavy</option>
+          <option value="vintage">Vintage</option>
+          <option value="hand-drawn">Hand-drawn</option>
+          <option value="isometric">Isometric</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="colorScheme">Color Scheme</label>
+        <select id="colorScheme">
+          <option value="">Any colors</option>
+          <option value="vibrant">Vibrant & Bold</option>
+          <option value="pastel">Soft Pastels</option>
+          <option value="monochrome">Monochrome</option>
+          <option value="warm">Warm Tones</option>
+          <option value="cool">Cool Tones</option>
+          <option value="earth">Earth Tones</option>
+          <option value="neon">Neon Colors</option>
+          <option value="grayscale">Grayscale</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="complexity">Complexity</label>
+        <select id="complexity">
+          <option value="">Balanced</option>
+          <option value="simple">Simple & Clean</option>
+          <option value="detailed">Detailed & Intricate</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="size">Canvas Size</label>
+        <select id="size">
+          <option value="500x500">Square (500×500)</option>
+          <option value="800x600">Landscape (800×600)</option>
+          <option value="600x800">Portrait (600×800)</option>
+          <option value="1000x400">Wide Banner (1000×400)</option>
+          <option value="400x400">Icon (400×400)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Elements to Include</label>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeGradients" />
+            <span>Gradients</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeShadows" />
+            <span>Shadows/Depth</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeTexture" />
+            <span>Texture</span>
+          </label>
+        </div>
+      </div>
+    </details>
+
+    <button
+      type="button"
+      data-appearance="primary"
+      data-handler="generate"
+      id="generateBtn"
+    >
+      Generate Design
     </button>
+
+    <div id="status" class="status-message"></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>
