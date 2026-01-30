@@ -1,6 +1,6 @@
 {
-  "name": "Penpot AI Designer",
+  "name": "Matilha Collective Tools",
   "code": "plugin.js",
-  "description": "Generate SVG designs from text descriptions using Gemini AI",
+  "description": "AI-powered design tools: generation, PDF import, translation, image editing, and background removal",
   "permissions": ["content:read", "content:write"]
 }

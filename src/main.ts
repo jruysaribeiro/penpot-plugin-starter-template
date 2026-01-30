@@ -475,6 +475,16 @@ async function generateDesign() {
       cleanSvg = cleanSvg.replace(/```\n?/g, "");
       cleanSvg = cleanSvg.trim();
 
+      // Extract SVG if there's surrounding text
+      const svgMatch = cleanSvg.match(/<svg[\s\S]*<\/svg>/i);
+      if (svgMatch) {
+        cleanSvg = svgMatch[0];
+      } else if (!cleanSvg.startsWith("<svg")) {
+        throw new Error(
+          `${modelDisplayName} did not return valid SVG. Response started with: ${cleanSvg.substring(0, 100)}`,
+        );
+      }
+
       // Send SVG to plugin.ts for import with positioning info
       parent.postMessage(
         {
@@ -1104,3 +1114,699 @@ function showTranslationStatus(
     }, 3000);
   }
 }
+
+// ===========================
+// Image Editor Feature
+// ===========================
+
+const loadImageBtn = document.getElementById("loadImageBtn");
+const imageEditorCanvas = document.getElementById("imageEditorCanvas");
+const cropCanvas = document.getElementById("cropCanvas") as HTMLCanvasElement;
+const cropOverlay = document.getElementById("cropOverlay");
+const startCropBtn = document.getElementById("startCropBtn");
+const resetCropBtn = document.getElementById("resetCropBtn");
+const cropControls = document.getElementById("cropControls");
+const applyCropBtn = document.getElementById("applyCropBtn");
+const cancelCropBtn = document.getElementById("cancelCropBtn");
+const imageEditorStatus = document.getElementById("imageEditorStatus");
+
+let originalImage: HTMLImageElement | null = null;
+let selectedImageId = "";
+let isCropping = false;
+let cropStart: { x: number; y: number } | null = null;
+let cropEnd: { x: number; y: number } | null = null;
+let canvasScale = 1;
+
+// Load selected image from Penpot
+loadImageBtn?.addEventListener("click", () => {
+  showImageEditorStatus("Loading image from selection...", "loading");
+  parent.postMessage({ type: "get-selected-image" }, "*");
+});
+
+// Listen for image data from Penpot
+window.addEventListener("message", (event) => {
+  if (event.data?.source === "penpot" && event.data.type === "selected-image") {
+    if (event.data.message) {
+      showImageEditorStatus(event.data.message, "error");
+    } else if (event.data.imageData && event.data.shapeId) {
+      // imageData now contains shape info (x, y, width, height)
+      setupCropInterface(event.data.imageData, event.data.shapeId);
+    } else {
+      showImageEditorStatus("No image selected or image not found", "error");
+    }
+  }
+});
+
+// Setup crop interface without loading actual image
+function setupCropInterface(imageInfo: any, shapeId: string) {
+  selectedImageId = shapeId;
+
+  // If we have the actual image data, load it
+  if (imageInfo.dataUrl) {
+    const img = new Image();
+    img.onload = () => {
+      originalImage = img;
+
+      // The exported preview is at 0.5 scale for balance between quality and size
+      const maxWidth = 380;
+      const maxHeight = 400;
+      let width = img.width;
+      let height = img.height;
+
+      console.log("Image loaded:", {
+        originalShapeWidth: imageInfo.width,
+        originalShapeHeight: imageInfo.height,
+        exportedImageWidth: img.width,
+        exportedImageHeight: img.height,
+        previewScale: imageInfo.previewScale || 1.0,
+      });
+
+      // Calculate how much to scale the canvas display
+      const exportScale = imageInfo.previewScale || 1.0;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = width * ratio;
+        height = height * ratio;
+        // canvasScale maps canvas pixels to original Penpot shape coordinates
+        canvasScale = 1 / exportScale / ratio;
+      } else {
+        // If image fits without scaling, use 1:1 mapping
+        canvasScale = 1 / exportScale;
+      }
+
+      console.log("Canvas setup:", {
+        canvasWidth: width,
+        canvasHeight: height,
+        canvasScale: canvasScale,
+        displayRatio: width / img.width,
+      });
+
+      cropCanvas.width = width;
+      cropCanvas.height = height;
+
+      const ctx = cropCanvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+      }
+
+      if (imageEditorCanvas) imageEditorCanvas.style.display = "block";
+      if (cropControls) cropControls.style.display = "none";
+      isCropping = false;
+      cropStart = null;
+      cropEnd = null;
+
+      showImageEditorStatus(
+        "Image loaded! Click 'Start Crop' to begin.",
+        "success",
+      );
+    };
+
+    img.onerror = () => {
+      showImageEditorStatus("Failed to load image", "error");
+    };
+
+    img.src = imageInfo.dataUrl;
+    return;
+  }
+
+  // Fallback to placeholder if no image data
+  // Create a placeholder canvas showing the dimensions
+  const maxWidth = 380;
+  const maxHeight = 400;
+  let width = imageInfo.width;
+  let height = imageInfo.height;
+
+  if (width > maxWidth || height > maxHeight) {
+    const ratio = Math.min(maxWidth / width, maxHeight / height);
+    width = width * ratio;
+    height = height * ratio;
+    canvasScale = ratio;
+  } else {
+    canvasScale = 1;
+  }
+
+  cropCanvas.width = width;
+  cropCanvas.height = height;
+
+  const ctx = cropCanvas.getContext("2d");
+  if (ctx) {
+    // Draw a placeholder showing the image area
+    ctx.fillStyle = "#f0f0f0";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = "#999";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, width, height);
+
+    ctx.fillStyle = "#666";
+    ctx.font = "14px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Image Area", width / 2, height / 2 - 10);
+    ctx.fillText(
+      `${Math.round(imageInfo.width)} × ${Math.round(imageInfo.height)}`,
+      width / 2,
+      height / 2 + 10,
+    );
+  }
+
+  if (imageEditorCanvas) imageEditorCanvas.style.display = "block";
+  if (cropControls) cropControls.style.display = "none";
+  isCropping = false;
+  cropStart = null;
+  cropEnd = null;
+
+  showImageEditorStatus(
+    "Click 'Start Crop' and draw the area you want to keep",
+    "success",
+  );
+}
+
+// Load image data to canvas (old function - keeping for reference but won't be called)
+function loadImageToCanvas(imageDataUrl: string, shapeId: string) {
+  const img = new Image();
+  img.onload = () => {
+    originalImage = img;
+    selectedImageId = shapeId;
+
+    // Calculate canvas size to fit in UI
+    const maxWidth = 380;
+    const maxHeight = 400;
+    let width = img.width;
+    let height = img.height;
+
+    if (width > maxWidth || height > maxHeight) {
+      const ratio = Math.min(maxWidth / width, maxHeight / height);
+      width = width * ratio;
+      height = height * ratio;
+      canvasScale = ratio;
+    } else {
+      canvasScale = 1;
+    }
+
+    cropCanvas.width = width;
+    cropCanvas.height = height;
+
+    const ctx = cropCanvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(img, 0, 0, width, height);
+    }
+
+    if (imageEditorCanvas) imageEditorCanvas.style.display = "block";
+    if (cropControls) cropControls.style.display = "none";
+    isCropping = false;
+    cropStart = null;
+    cropEnd = null;
+
+    showImageEditorStatus(
+      "Image loaded! Click 'Start Crop' to begin.",
+      "success",
+    );
+  };
+
+  img.onerror = () => {
+    showImageEditorStatus("Failed to load image", "error");
+  };
+
+  img.src = imageDataUrl;
+}
+
+// Variables for corner-drag cropping
+let dragHandle: string | null = null; // 'tl', 'tr', 'bl', 'br' for corners
+let cropRect = { x: 0, y: 0, width: 0, height: 0 };
+
+// Start crop mode
+startCropBtn?.addEventListener("click", () => {
+  isCropping = true;
+  // Initialize crop rect to full canvas
+  cropRect = {
+    x: 0,
+    y: 0,
+    width: cropCanvas.width,
+    height: cropCanvas.height,
+  };
+  if (cropControls) cropControls.style.display = "block";
+  drawCropHandles();
+  showImageEditorStatus("Drag the corners to adjust crop area", "loading");
+});
+
+// Reset crop
+resetCropBtn?.addEventListener("click", () => {
+  isCropping = false;
+  dragHandle = null;
+  if (cropControls) cropControls.style.display = "none";
+  if (cropOverlay) cropOverlay.innerHTML = "";
+
+  // Redraw clean image
+  const ctx = cropCanvas.getContext("2d");
+  if (ctx && originalImage) {
+    ctx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    ctx.drawImage(originalImage, 0, 0, cropCanvas.width, cropCanvas.height);
+  }
+
+  showImageEditorStatus("Crop reset", "success");
+});
+
+// Canvas mouse events for corner dragging
+cropCanvas?.addEventListener("mousedown", (e) => {
+  if (!isCropping) return;
+
+  const rect = cropCanvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  // Check if clicking on a corner handle (20px radius)
+  const handleSize = 20;
+  if (
+    Math.abs(mouseX - cropRect.x) < handleSize &&
+    Math.abs(mouseY - cropRect.y) < handleSize
+  ) {
+    dragHandle = "tl"; // top-left
+  } else if (
+    Math.abs(mouseX - (cropRect.x + cropRect.width)) < handleSize &&
+    Math.abs(mouseY - cropRect.y) < handleSize
+  ) {
+    dragHandle = "tr"; // top-right
+  } else if (
+    Math.abs(mouseX - cropRect.x) < handleSize &&
+    Math.abs(mouseY - (cropRect.y + cropRect.height)) < handleSize
+  ) {
+    dragHandle = "bl"; // bottom-left
+  } else if (
+    Math.abs(mouseX - (cropRect.x + cropRect.width)) < handleSize &&
+    Math.abs(mouseY - (cropRect.y + cropRect.height)) < handleSize
+  ) {
+    dragHandle = "br"; // bottom-right
+  }
+});
+
+cropCanvas?.addEventListener("mousemove", (e) => {
+  if (!isCropping || !dragHandle) return;
+
+  const rect = cropCanvas.getBoundingClientRect();
+  const mouseX = Math.max(0, Math.min(cropCanvas.width, e.clientX - rect.left));
+  const mouseY = Math.max(0, Math.min(cropCanvas.height, e.clientY - rect.top));
+
+  // Update crop rect based on which handle is being dragged
+  if (dragHandle === "tl") {
+    const newWidth = cropRect.x + cropRect.width - mouseX;
+    const newHeight = cropRect.y + cropRect.height - mouseY;
+    if (newWidth > 20 && newHeight > 20) {
+      cropRect.x = mouseX;
+      cropRect.y = mouseY;
+      cropRect.width = newWidth;
+      cropRect.height = newHeight;
+    }
+  } else if (dragHandle === "tr") {
+    const newWidth = mouseX - cropRect.x;
+    const newHeight = cropRect.y + cropRect.height - mouseY;
+    if (newWidth > 20 && newHeight > 20) {
+      cropRect.width = newWidth;
+      cropRect.y = mouseY;
+      cropRect.height = newHeight;
+    }
+  } else if (dragHandle === "bl") {
+    const newWidth = cropRect.x + cropRect.width - mouseX;
+    const newHeight = mouseY - cropRect.y;
+    if (newWidth > 20 && newHeight > 20) {
+      cropRect.x = mouseX;
+      cropRect.width = newWidth;
+      cropRect.height = newHeight;
+    }
+  } else if (dragHandle === "br") {
+    const newWidth = mouseX - cropRect.x;
+    const newHeight = mouseY - cropRect.y;
+    if (newWidth > 20 && newHeight > 20) {
+      cropRect.width = newWidth;
+      cropRect.height = newHeight;
+    }
+  }
+
+  drawCropHandles();
+});
+
+cropCanvas?.addEventListener("mouseup", () => {
+  dragHandle = null;
+});
+
+// Draw crop rectangle with handles
+function drawCropHandles() {
+  const ctx = cropCanvas.getContext("2d");
+  if (!ctx) return;
+
+  // Redraw original image
+  ctx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+  if (originalImage) {
+    ctx.drawImage(originalImage, 0, 0, cropCanvas.width, cropCanvas.height);
+  }
+
+  // Draw semi-transparent overlay outside crop area
+  ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+
+  // Top
+  ctx.fillRect(0, 0, cropCanvas.width, cropRect.y);
+  // Bottom
+  ctx.fillRect(
+    0,
+    cropRect.y + cropRect.height,
+    cropCanvas.width,
+    cropCanvas.height - cropRect.y - cropRect.height,
+  );
+  // Left
+  ctx.fillRect(0, cropRect.y, cropRect.x, cropRect.height);
+  // Right
+  ctx.fillRect(
+    cropRect.x + cropRect.width,
+    cropRect.y,
+    cropCanvas.width - cropRect.x - cropRect.width,
+    cropRect.height,
+  );
+
+  // Draw crop rectangle border
+  ctx.strokeStyle = "#6366f1";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
+
+  // Draw corner handles
+  const handleSize = 10;
+  ctx.fillStyle = "#6366f1";
+
+  // Top-left
+  ctx.fillRect(
+    cropRect.x - handleSize / 2,
+    cropRect.y - handleSize / 2,
+    handleSize,
+    handleSize,
+  );
+  // Top-right
+  ctx.fillRect(
+    cropRect.x + cropRect.width - handleSize / 2,
+    cropRect.y - handleSize / 2,
+    handleSize,
+    handleSize,
+  );
+  // Bottom-left
+  ctx.fillRect(
+    cropRect.x - handleSize / 2,
+    cropRect.y + cropRect.height - handleSize / 2,
+    handleSize,
+    handleSize,
+  );
+  // Bottom-right
+  ctx.fillRect(
+    cropRect.x + cropRect.width - handleSize / 2,
+    cropRect.y + cropRect.height - handleSize / 2,
+    handleSize,
+    handleSize,
+  );
+
+  // Show dimensions
+  ctx.fillStyle = "#6366f1";
+  ctx.font = "bold 14px sans-serif";
+  ctx.fillText(
+    `${Math.round(cropRect.width * canvasScale)} × ${Math.round(cropRect.height * canvasScale)}`,
+    cropRect.x + 5,
+    cropRect.y + 20,
+  );
+}
+
+// Apply crop
+applyCropBtn?.addEventListener("click", async () => {
+  if (!cropRect || cropRect.width === 0 || cropRect.height === 0) {
+    showImageEditorStatus("No crop area selected", "error");
+    return;
+  }
+
+  if (!originalImage) {
+    showImageEditorStatus("No image loaded", "error");
+    return;
+  }
+
+  showImageEditorStatus("Processing crop...", "loading");
+
+  try {
+    console.log("Crop area on canvas:", {
+      x: cropRect.x,
+      y: cropRect.y,
+      width: cropRect.width,
+      height: cropRect.height,
+    });
+
+    // Calculate crop coordinates on the FULL-SIZE original image
+    const fullSizeCropX = cropRect.x * canvasScale;
+    const fullSizeCropY = cropRect.y * canvasScale;
+    const fullSizeCropWidth = cropRect.width * canvasScale;
+    const fullSizeCropHeight = cropRect.height * canvasScale;
+
+    console.log("Full-size crop coordinates:", {
+      x: fullSizeCropX,
+      y: fullSizeCropY,
+      width: fullSizeCropWidth,
+      height: fullSizeCropHeight,
+    });
+
+    // Create a full-size canvas and draw the crop from the original image
+    const cropOutputCanvas = document.createElement("canvas");
+    cropOutputCanvas.width = fullSizeCropWidth;
+    cropOutputCanvas.height = fullSizeCropHeight;
+    const cropCtx = cropOutputCanvas.getContext("2d");
+
+    if (!cropCtx) {
+      throw new Error("Could not get canvas context");
+    }
+
+    // Draw the cropped portion from the ORIGINAL full-size image
+    cropCtx.drawImage(
+      originalImage,
+      fullSizeCropX,
+      fullSizeCropY,
+      fullSizeCropWidth,
+      fullSizeCropHeight,
+      0,
+      0,
+      fullSizeCropWidth,
+      fullSizeCropHeight,
+    );
+
+    // Convert to blob
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      cropOutputCanvas.toBlob((b) => {
+        if (b) resolve(b);
+        else reject(new Error("Failed to create blob"));
+      }, "image/png");
+    });
+
+    // Convert blob to array buffer
+    const arrayBuffer = await blob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    console.log("Crop blob size:", uint8Array.length, "bytes");
+    console.log("Crop dimensions:", {
+      width: fullSizeCropWidth,
+      height: fullSizeCropHeight,
+    });
+
+    // Send cropped image data to plugin
+    parent.postMessage(
+      {
+        type: "upload-cropped-image",
+        imageData: Array.from(uint8Array),
+        width: fullSizeCropWidth,
+        height: fullSizeCropHeight,
+        originalX: fullSizeCropX,
+        originalY: fullSizeCropY,
+        shapeId: selectedImageId,
+      },
+      "*",
+    );
+
+    showImageEditorStatus("Uploading cropped image...", "loading");
+  } catch (error) {
+    console.error("Crop error:", error);
+    showImageEditorStatus("Failed to crop image", "error");
+  }
+});
+
+// Listen for crop success
+window.addEventListener("message", (event) => {
+  if (event.data.source === "penpot" && event.data.type === "crop-success") {
+    showImageEditorStatus("Image cropped successfully!", "success");
+
+    // Reset UI
+    setTimeout(() => {
+      if (imageEditorCanvas) imageEditorCanvas.style.display = "none";
+      if (cropControls) cropControls.style.display = "none";
+      isCropping = false;
+      dragHandle = null;
+    }, 1500);
+  }
+});
+
+// Cancel crop
+cancelCropBtn?.addEventListener("click", () => {
+  isCropping = false;
+  dragHandle = null;
+  if (cropControls) cropControls.style.display = "none";
+  if (cropOverlay) cropOverlay.innerHTML = "";
+
+  // Redraw clean image
+  const ctx = cropCanvas.getContext("2d");
+  if (ctx && originalImage) {
+    ctx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    ctx.drawImage(originalImage, 0, 0, cropCanvas.width, cropCanvas.height);
+  }
+});
+
+// Show image editor status
+function showImageEditorStatus(
+  message: string,
+  type: "success" | "error" | "loading",
+) {
+  if (!imageEditorStatus) return;
+
+  imageEditorStatus.textContent = message;
+  imageEditorStatus.className = `status-message ${type}`;
+  imageEditorStatus.style.display = "block";
+
+  if (type === "success" || type === "error") {
+    setTimeout(() => {
+      if (imageEditorStatus) imageEditorStatus.style.display = "none";
+    }, 3000);
+  }
+}
+
+// ========================================
+// Background Removal Feature
+// ========================================
+
+const removeBgApiKeyInput =
+  document.querySelector<HTMLInputElement>("#removeBgApiKey");
+const removeBgBtn = document.querySelector<HTMLButtonElement>("#removeBgBtn");
+const bgRemovalStatus =
+  document.querySelector<HTMLDivElement>("#bgRemovalStatus");
+
+// Load saved Remove.bg API key
+const savedRemoveBgKey = localStorage.getItem("removebg_api_key");
+if (savedRemoveBgKey && removeBgApiKeyInput) {
+  removeBgApiKeyInput.value = savedRemoveBgKey;
+}
+
+// Save API key when it changes
+removeBgApiKeyInput?.addEventListener("change", (e) => {
+  const target = e.target as HTMLInputElement;
+  localStorage.setItem("removebg_api_key", target.value);
+});
+
+function showBgRemovalStatus(
+  message: string,
+  type: "success" | "error" | "loading",
+) {
+  if (!bgRemovalStatus) return;
+
+  bgRemovalStatus.textContent = message;
+  bgRemovalStatus.className = `status-message ${type}`;
+  bgRemovalStatus.style.display = "block";
+
+  if (type === "success" || type === "error") {
+    setTimeout(() => {
+      if (bgRemovalStatus) bgRemovalStatus.style.display = "none";
+    }, 3000);
+  }
+}
+
+removeBgBtn?.addEventListener("click", async () => {
+  const apiKey = removeBgApiKeyInput?.value || "";
+
+  if (!apiKey) {
+    showBgRemovalStatus("Please enter your Remove.bg API key", "error");
+    return;
+  }
+
+  showBgRemovalStatus("Requesting image from Penpot...", "loading");
+
+  // Request the selected image from Penpot
+  parent.postMessage(
+    {
+      type: "get-image-for-bg-removal",
+    },
+    "*",
+  );
+});
+
+// Listen for image data from Penpot
+window.addEventListener("message", async (event) => {
+  if (
+    event.data.source === "penpot" &&
+    event.data.type === "image-for-bg-removal"
+  ) {
+    if (!event.data.imageData) {
+      showBgRemovalStatus("Please select an image in Penpot first", "error");
+      return;
+    }
+
+    const apiKey = removeBgApiKeyInput?.value || "";
+
+    try {
+      showBgRemovalStatus("Removing background...", "loading");
+
+      // Convert base64 to blob
+      const base64Data = event.data.imageData.split(",")[1];
+      const binaryData = atob(base64Data);
+      const bytes = new Uint8Array(binaryData.length);
+      for (let i = 0; i < binaryData.length; i++) {
+        bytes[i] = binaryData.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: "image/png" });
+
+      // Call Remove.bg API
+      const formData = new FormData();
+      formData.append("image_file", blob, "image.png");
+      formData.append("size", "auto");
+
+      const response = await fetch("https://api.remove.bg/v1.0/removebg", {
+        method: "POST",
+        headers: {
+          "X-Api-Key": apiKey,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(
+          error.errors?.[0]?.title || "Failed to remove background",
+        );
+      }
+
+      const resultBlob = await response.blob();
+      const arrayBuffer = await resultBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+
+      showBgRemovalStatus("Uploading result to Penpot...", "loading");
+
+      // Send result back to Penpot
+      parent.postMessage(
+        {
+          type: "upload-bg-removed-image",
+          imageData: Array.from(uint8Array),
+          originalShapeId: event.data.shapeId,
+          width: event.data.width,
+          height: event.data.height,
+        },
+        "*",
+      );
+    } catch (error) {
+      console.error("Background removal error:", error);
+      showBgRemovalStatus(
+        error instanceof Error ? error.message : "Failed to remove background",
+        "error",
+      );
+    }
+  }
+
+  if (
+    event.data.source === "penpot" &&
+    event.data.type === "bg-removal-success"
+  ) {
+    showBgRemovalStatus("Background removed successfully!", "success");
+  }
+});

@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Penpot AI Designer</title>
+    <title>Matilha Collective Tools</title>
   </head>
   <body>
-    <h2>Penpot AI Designer</h2>
+    <h2>Matilha Collective Tools</h2>
 
     <!-- Tab Navigation -->
     <div class="tabs">
@@ -16,6 +16,8 @@
       <button class="tab-btn" data-tab="image-tracing">Image Tracing</button>
       <button class="tab-btn" data-tab="pdf-import">PDF Import</button>
       <button class="tab-btn" data-tab="translation">Translation</button>
+      <button class="tab-btn" data-tab="image-editor">Image Editor</button>
+      <button class="tab-btn" data-tab="bg-removal">BG Removal</button>
     </div>
 
     <!-- Tab Content: AI Generation -->
@@ -478,6 +480,133 @@
       <div id="translationStatus" class="status-message"></div>
     </div>
     <!-- End Tab Content: Translation -->
+
+    <!-- Tab Content: Image Editor -->
+    <div class="tab-content" id="image-editor">
+      <div class="form-group">
+        <label>Select Image from Penpot</label>
+        <button
+          type="button"
+          data-appearance="secondary"
+          id="loadImageBtn"
+          style="width: 100%; margin-bottom: 8px"
+        >
+          Load Selected Image
+        </button>
+        <small
+          >Select an image in Penpot, then click to load it for editing</small
+        >
+      </div>
+
+      <div id="imageEditorCanvas" style="display: none; margin-bottom: 16px">
+        <div style="position: relative; display: inline-block; max-width: 100%">
+          <canvas
+            id="cropCanvas"
+            style="
+              max-width: 100%;
+              border: 2px solid var(--color-primary);
+              cursor: crosshair;
+              display: block;
+            "
+          ></canvas>
+          <div
+            id="cropOverlay"
+            style="position: absolute; top: 0; left: 0; pointer-events: none"
+          ></div>
+        </div>
+
+        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap">
+          <button
+            type="button"
+            id="startCropBtn"
+            data-appearance="secondary"
+            style="flex: 1; min-width: 120px"
+          >
+            Start Crop
+          </button>
+          <button
+            type="button"
+            id="resetCropBtn"
+            data-appearance="secondary"
+            style="flex: 1; min-width: 120px"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <div id="cropControls" style="display: none; margin-bottom: 16px">
+        <div
+          style="
+            padding: 12px;
+            background: var(--color-background-secondary);
+            border-radius: 4px;
+            margin-bottom: 8px;
+          "
+        >
+          <div style="font-size: 13px; margin-bottom: 4px">Crop Selection</div>
+          <div
+            style="font-size: 11px; color: var(--color-foreground-secondary)"
+          >
+            Click and drag on the canvas to select area to crop
+          </div>
+        </div>
+
+        <button
+          type="button"
+          data-appearance="primary"
+          id="applyCropBtn"
+          style="width: 100%; margin-bottom: 8px"
+        >
+          Apply Crop & Replace in Penpot
+        </button>
+        <button
+          type="button"
+          data-appearance="secondary"
+          id="cancelCropBtn"
+          style="width: 100%"
+        >
+          Cancel Crop
+        </button>
+      </div>
+
+      <div id="imageEditorStatus" class="status-message"></div>
+    </div>
+    <!-- End Tab Content: Image Editor -->
+
+    <!-- Tab Content: Background Removal -->
+    <div class="tab-content" id="bg-removal">
+      <p style="margin-bottom: 16px">
+        Select an image in Penpot, then click below to remove its background
+        using AI.
+      </p>
+
+      <div class="form-group">
+        <label for="removeBgApiKey">Remove.bg API Key</label>
+        <input
+          type="password"
+          id="removeBgApiKey"
+          placeholder="Get free API key at remove.bg"
+          data-input="removeBgApiKey"
+        />
+        <small style="color: #666; margin-top: 4px; display: block">
+          Get your free API key at
+          <a href="https://remove.bg/api" target="_blank">remove.bg/api</a>
+        </small>
+      </div>
+
+      <button
+        type="button"
+        data-appearance="primary"
+        id="removeBgBtn"
+        style="width: 100%; margin-bottom: 16px"
+      >
+        Remove Background
+      </button>
+
+      <div id="bgRemovalStatus" class="status-message"></div>
+    </div>
+    <!-- End Tab Content: Background Removal -->
 
     <script type="module" src="/src/main.ts"></script>
   </body>

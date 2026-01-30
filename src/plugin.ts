@@ -303,6 +303,330 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
       }
     }
   }
+
+  // Handle get selected image request
+  if (message.type === "get-selected-image") {
+    const selection = penpot.selection;
+    console.log("Get selected image request, selection:", selection);
+
+    if (selection && selection.length > 0) {
+      const shape = selection[0];
+      console.log("Shape type:", shape.type);
+      console.log("Shape fills:", shape.fills);
+
+      // Check if it's a rectangle with an image fill
+      if (shape.type === "rectangle" && shape.fills && shape.fills.length > 0) {
+        console.log("Checking fills for image...");
+        const imageFill = shape.fills.find((fill: any) => fill.fillImage);
+        console.log("Image fill found:", imageFill);
+
+        if (imageFill && imageFill.fillImage) {
+          console.log("fillImage object:", imageFill.fillImage);
+          console.log("fillImage keys:", Object.keys(imageFill.fillImage));
+
+          const imageInfo = {
+            x: shape.x,
+            y: shape.y,
+            width: shape.width,
+            height: shape.height,
+            imageName: imageFill.fillImage.name,
+            imageAssetId: imageFill.fillImage.id,
+          };
+
+          // Export for preview at full quality without borders
+          try {
+            console.log("Exporting preview at 1.0 scale without borders...");
+
+            // Temporarily remove strokes/borders before export
+            const originalStrokes = shape.strokes;
+            const originalBorderRadius = shape.borderRadius;
+            shape.strokes = [];
+            if (shape.borderRadius) {
+              shape.borderRadius = 0;
+            }
+
+            const exportData = await shape.export({ type: "png", scale: 1.0 });
+
+            // Restore original strokes/borders
+            shape.strokes = originalStrokes;
+            if (originalBorderRadius) {
+              shape.borderRadius = originalBorderRadius;
+            }
+
+            console.log("Preview export successful, size:", exportData?.length);
+
+            if (exportData && exportData.length > 0) {
+              // Manual base64 encoding
+              const bytes = new Uint8Array(exportData);
+              const base64chars =
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+              let base64 = "";
+
+              for (let i = 0; i < bytes.length; i += 3) {
+                const byte1 = bytes[i];
+                const byte2 = i + 1 < bytes.length ? bytes[i + 1] : 0;
+                const byte3 = i + 2 < bytes.length ? bytes[i + 2] : 0;
+
+                const encoded1 = byte1 >> 2;
+                const encoded2 = ((byte1 & 3) << 4) | (byte2 >> 4);
+                const encoded3 = ((byte2 & 15) << 2) | (byte3 >> 6);
+                const encoded4 = byte3 & 63;
+
+                base64 += base64chars[encoded1];
+                base64 += base64chars[encoded2];
+                base64 += i + 1 < bytes.length ? base64chars[encoded3] : "=";
+                base64 += i + 2 < bytes.length ? base64chars[encoded4] : "=";
+              }
+
+              imageInfo.dataUrl = `data:image/png;base64,${base64}`;
+              imageInfo.previewScale = 1.0; // Tell UI this is 1.0 scale (full quality)
+              console.log("Preview base64 conversion successful");
+            }
+          } catch (error) {
+            console.error("Preview export failed:", error);
+          }
+
+          penpot.ui.sendMessage({
+            source: "penpot",
+            type: "selected-image",
+            imageData: imageInfo,
+            shapeId: shape.id,
+          });
+          return;
+        }
+      }
+    }
+
+    // No image found
+    console.log("No image found in selection");
+    penpot.ui.sendMessage({
+      source: "penpot",
+      type: "selected-image",
+      imageData: null,
+      shapeId: null,
+    });
+  }
+
+  // Handle upload cropped image request
+  if (message.type === "upload-cropped-image") {
+    try {
+      const selection = penpot.selection;
+
+      if (selection && selection.length > 0) {
+        const originalShape = selection[0];
+
+        // Convert array back to Uint8Array - this is the actual cropped pixel data from canvas
+        const imageData = new Uint8Array(message.imageData);
+
+        console.log(
+          "Uploading cropped image from canvas, size:",
+          imageData.length,
+        );
+
+        // Upload the cropped image to Penpot
+        const imageAsset = await penpot.uploadMediaData(
+          "Cropped Image",
+          imageData,
+          "image/png",
+        );
+
+        if (imageAsset) {
+          // Create a new rectangle for the cropped image
+          const croppedShape = penpot.createRectangle();
+
+          if (croppedShape) {
+            // Set the cropped image as fill
+            croppedShape.fills = [
+              {
+                fillOpacity: 1,
+                fillImage: imageAsset,
+              },
+            ];
+
+            // Set dimensions to match the cropped area
+            croppedShape.resize(message.width, message.height);
+
+            // Position at the same location as the crop was on the original
+            croppedShape.x = originalShape.x + message.originalX;
+            croppedShape.y = originalShape.y + message.originalY;
+
+            // Name the shape
+            croppedShape.name = "Cropped Image";
+
+            // Remove strokes
+            croppedShape.strokes = [];
+
+            // Select the new shape
+            penpot.selection = [croppedShape];
+
+            console.log("Cropped image uploaded and placed successfully");
+
+            penpot.ui.sendMessage({
+              source: "penpot",
+              type: "crop-success",
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Upload cropped image error:", error);
+      penpot.ui.sendMessage({
+        source: "penpot",
+        type: "crop-error",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  // Handle get image for background removal request
+  if (message.type === "get-image-for-bg-removal") {
+    const selection = penpot.selection;
+
+    if (selection && selection.length > 0) {
+      const shape = selection[0];
+
+      if (shape.type === "rectangle" && shape.fills && shape.fills.length > 0) {
+        const imageFill = shape.fills.find((fill: any) => fill.fillImage);
+
+        if (imageFill && imageFill.fillImage) {
+          try {
+            console.log("Exporting image for background removal...");
+
+            // Temporarily remove strokes/borders before export
+            const originalStrokes = shape.strokes;
+            const originalBorderRadius = shape.borderRadius;
+            shape.strokes = [];
+            if (shape.borderRadius) {
+              shape.borderRadius = 0;
+            }
+
+            const exportData = await shape.export({ type: "png", scale: 1.0 });
+
+            // Restore original strokes/borders
+            shape.strokes = originalStrokes;
+            if (originalBorderRadius) {
+              shape.borderRadius = originalBorderRadius;
+            }
+
+            if (exportData && exportData.length > 0) {
+              // Manual base64 encoding
+              const bytes = new Uint8Array(exportData);
+              const base64chars =
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+              let base64 = "";
+
+              for (let i = 0; i < bytes.length; i += 3) {
+                const byte1 = bytes[i];
+                const byte2 = i + 1 < bytes.length ? bytes[i + 1] : 0;
+                const byte3 = i + 2 < bytes.length ? bytes[i + 2] : 0;
+
+                const encoded1 = byte1 >> 2;
+                const encoded2 = ((byte1 & 3) << 4) | (byte2 >> 4);
+                const encoded3 = ((byte2 & 15) << 2) | (byte3 >> 6);
+                const encoded4 = byte3 & 63;
+
+                base64 += base64chars[encoded1];
+                base64 += base64chars[encoded2];
+                base64 += i + 1 < bytes.length ? base64chars[encoded3] : "=";
+                base64 += i + 2 < bytes.length ? base64chars[encoded4] : "=";
+              }
+
+              penpot.ui.sendMessage({
+                source: "penpot",
+                type: "image-for-bg-removal",
+                imageData: `data:image/png;base64,${base64}`,
+                shapeId: shape.id,
+                width: shape.width,
+                height: shape.height,
+              });
+              return;
+            }
+          } catch (error) {
+            console.error("Export for bg removal failed:", error);
+          }
+        }
+      }
+    }
+
+    // No valid image found
+    penpot.ui.sendMessage({
+      source: "penpot",
+      type: "image-for-bg-removal",
+      imageData: null,
+      shapeId: null,
+    });
+  }
+
+  // Handle upload background-removed image
+  if (message.type === "upload-bg-removed-image") {
+    try {
+      const selection = penpot.selection;
+
+      if (selection && selection.length > 0) {
+        const originalShape = selection[0];
+
+        // Convert array back to Uint8Array
+        const imageData = new Uint8Array(message.imageData);
+
+        console.log(
+          "Uploading background-removed image, size:",
+          imageData.length,
+        );
+
+        // Upload the image to Penpot
+        const imageAsset = await penpot.uploadMediaData(
+          "Background Removed",
+          imageData,
+          "image/png",
+        );
+
+        if (imageAsset) {
+          // Create a new rectangle for the image
+          const newShape = penpot.createRectangle();
+
+          if (newShape) {
+            // Set the image as fill
+            newShape.fills = [
+              {
+                fillOpacity: 1,
+                fillImage: imageAsset,
+              },
+            ];
+
+            // Set dimensions to match original
+            newShape.resize(message.width, message.height);
+
+            // Position at the same location as original
+            newShape.x = originalShape.x;
+            newShape.y = originalShape.y;
+
+            // Name the shape
+            newShape.name = "Background Removed";
+
+            // Remove strokes
+            newShape.strokes = [];
+
+            // Select the new shape
+            penpot.selection = [newShape];
+
+            console.log("Background-removed image uploaded successfully");
+
+            penpot.ui.sendMessage({
+              source: "penpot",
+              type: "bg-removal-success",
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Upload background-removed image error:", error);
+      penpot.ui.sendMessage({
+        source: "penpot",
+        type: "bg-removal-error",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
 });
 
 // Update the theme in the iframe
