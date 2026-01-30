@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proposta Técnica: Matilha Collective x CDI</title>
+    <style>
+      /* Variáveis de Cor e Estilo */
+      :root {
+        --bg: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.8);
+        --primary: #38bdf8;
+        --secondary: #818cf8;
+        --text-main: #f8fafc;
+        --text-dim: #94a3b8;
+        --accent-green: #10b981;
+        --accent-rose: #f43f5e;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg);
+        color: var(--text-main);
+        line-height: 1.6;
+        overflow-x: hidden;
+      }
+
+      section {
+        min-height: 100vh;
+        padding: 4rem 2rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+
+      /* Tipografia */
+      h1 {
+        font-size: 4rem;
+        font-weight: 900;
+        margin-bottom: 1rem;
+        letter-spacing: -1px;
+      }
+      h2 {
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        border-left: 5px solid var(--primary);
+        padding-left: 1.5rem;
+      }
+      h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--primary);
+      }
+      .gradient-text {
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      /* Layout */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      .card {
+        background: var(--card-bg);
+        padding: 2rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: transform 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+      }
+
+      /* Tabela */
+      .table-container {
+        overflow-x: auto;
+        margin-top: 2rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--card-bg);
+        border-radius: 1rem;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 1.2rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      th {
+        background: rgba(0, 0, 0, 0.2);
+        color: var(--primary);
+        font-weight: bold;
+      }
+
+      /* Preços */
+      .price-tag {
+        font-size: 3rem;
+        font-weight: 900;
+        margin: 1rem 0;
+      }
+      .discount {
+        text-decoration: line-through;
+        color: var(--accent-rose);
+        font-style: italic;
+        font-size: 0.9rem;
+      }
+      .badge {
+        background: var(--accent-green);
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: 2rem;
+        font-size: 0.8rem;
+        vertical-align: middle;
+      }
+
+      /* Utilidades */
+      .btn {
+        display: inline-block;
+        background: var(--primary);
+        color: var(--bg);
+        padding: 1rem 2.5rem;
+        border-radius: 2rem;
+        text-decoration: none;
+        font-weight: bold;
+        margin-top: 2rem;
+        transition: opacity 0.3s;
+      }
+      .btn:hover {
+        opacity: 0.9;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .dim {
+        color: var(--text-dim);
+        font-size: 0.95rem;
+      }
+
+      /* Animação Simples */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      section {
+        animation: fadeIn 0.8s ease-out;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 2.5rem;
+        }
+        h2 {
+          font-size: 1.8rem;
+        }
+        section {
+          padding: 2rem 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="text-center">
+      <h1>Matilha <span class="gradient-text">Collective</span></h1>
+      <p style="font-size: 1.5rem; color: var(--text-dim)">
+        Sistema de Gestão de Presenças PWA
+      </p>
+      <p class="dim">Proposta para o Centro de Inovação Carlos Fiolhais</p>
+    </section>
+
+    <section>
+      <h2>A Solução Técnica</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>SvelteKit PWA</h3>
+          <p class="dim">
+            Desenvolvimento moderno com SvelteKit. Performance superior,
+            funcionamento offline e instalação direta no smartphone sem lojas de
+            apps.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Check-in NFC + QR</h3>
+          <p class="dim">
+            Interação rápida por aproximação (Tags NFC) com alternativa via QR
+            Code. Otimizado para o fluxo real de entrada e saída de
+            utilizadores.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Infraestrutura UE</h3>
+          <p class="dim">
+            Hosting em Frankfurt (Hetzner) para cumprimento integral do RGPD.
+            Inclui redundância física local no Centro via Mini PC Linux.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section style="background: rgba(0, 0, 0, 0.2)">
+      <h2>Funcionalidades Core</h2>
+      <div class="grid">
+        <div class="card">
+          <p>
+            <b>• Gestão de Perfis:</b> Jovens e Coordenadores com permissões
+            distintas.
+          </p>
+          <p>
+            <b>• Timers Ativos:</b> Monitorização em tempo real do tempo de
+            permanência.
+          </p>
+          <p>
+            <b>• Módulo RGPD:</b> Consentimento parental digital e retenção de
+            dados automática.
+          </p>
+        </div>
+        <div class="card">
+          <p>
+            <b>• Backoffice:</b> Dashboards estatísticos e exportação para
+            Excel/CSV.
+          </p>
+          <p>
+            <b>• Repositório:</b> Gestão centralizada de políticas e termos de
+            uso.
+          </p>
+          <p>
+            <b>• Auditoria:</b> Histórico completo de acessos e modificações.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Roadmap de Implementação</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Fase</th>
+              <th>Descrição</th>
+              <th>Prazo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>01</td>
+              <td>Workshop de UX e Definição de Fluxos Críticos</td>
+              <td>Semana 2</td>
+            </tr>
+            <tr>
+              <td>02</td>
+              <td>Desenvolvimento da PWA e Sistema de Check-in</td>
+              <td>Semana 6</td>
+            </tr>
+            <tr>
+              <td>03</td>
+              <td>Backoffice, Relatórios e Configuração de Infraestrutura</td>
+              <td>Semana 10</td>
+            </tr>
+            <tr>
+              <td>04</td>
+              <td>Testes, Auditoria RGPD e Go-Live</td>
+              <td>Semana 12</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section style="background: rgba(0, 0, 0, 0.2)">
+      <h2>Investimento Comercial</h2>
+      <div class="grid">
+        <div class="card">
+          <p class="badge">Desenvolvimento Software</p>
+          <div class="price-tag">
+            5.500€
+            <span style="font-size: 1rem; color: var(--text-dim)">+ IVA</span>
+          </div>
+          <p class="discount">Valor de Mercado: 9.500€</p>
+          <p class="dim" style="margin-top: 1rem">
+            Inclui Propriedade Intelectual total para o CDI e suporte ao
+            lançamento.
+          </p>
+        </div>
+        <div class="card">
+          <p class="badge" style="background: var(--secondary)">
+            Manutenção Mensal
+          </p>
+          <div class="price-tag">
+            180€
+            <span style="font-size: 1rem; color: var(--text-dim)">/ mês</span>
+          </div>
+          <p class="dim">
+            Inclui Cloud (UE), backups diários, suporte técnico e atualizações
+            de segurança.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="text-center">
+      <h2 style="border: none; padding: 0">Próximos Passos</h2>
+      <p class="dim" style="font-size: 1.2rem">
+        Agendamento do Workshop de 2h para validação de protótipo.
+      </p>
+      <p style="margin-top: 2rem"><i>"Powered by Matilha Collective"</i></p>
+      <a href="mailto:teu-email@matilha.pt" class="btn">Confirmar Workshop</a>
+    </section>
+  </body>
+</html>
