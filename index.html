@@ -32,6 +32,12 @@
         placeholder="Describe what you want to create..."
         data-input="description"
       ></textarea>
+      <small
+        id="selectionHint"
+        style="display: none; color: var(--color-accent)"
+      >
+        ✨ Using colors and shapes from your selection
+      </small>
     </div>
 
     <details class="options-section">
@@ -135,6 +141,18 @@
           <option value="1000x400">Wide Banner (1000×400)</option>
           <option value="400x400">Icon (400×400)</option>
         </select>
+      </div>
+
+      <div class="form-group">
+        <label for="variations">Number of Variations</label>
+        <select id="variations">
+          <option value="1">1 design</option>
+          <option value="2">2 variations</option>
+          <option value="3" selected>3 variations</option>
+          <option value="4">4 variations</option>
+          <option value="5">5 variations</option>
+        </select>
+        <small>Generate multiple options to choose from</small>
       </div>
 
       <div class="form-group">

@@ -27,6 +27,9 @@ apiKeyInput?.addEventListener("change", (e) => {
   localStorage.setItem("gemini_api_key", target.value);
 });
 
+// Store selection context
+let selectionContext = "";
+
 const descriptionInput =
   document.querySelector<HTMLTextAreaElement>("#description");
 const generateBtn = document.querySelector<HTMLButtonElement>("#generateBtn");
@@ -40,6 +43,8 @@ const colorSchemeSelect =
 const complexitySelect =
   document.querySelector<HTMLSelectElement>("#complexity");
 const sizeSelect = document.querySelector<HTMLSelectElement>("#size");
+const variationsSelect =
+  document.querySelector<HTMLSelectElement>("#variations");
 const includeGradients =
   document.querySelector<HTMLInputElement>("#includeGradients");
 const includeShadows =
@@ -72,6 +77,11 @@ function clearStatus() {
 
 function buildEnhancedPrompt(baseDescription: string): string {
   let enhancedPrompt = baseDescription;
+
+  // Add selection context if available
+  if (selectionContext) {
+    enhancedPrompt += `. ${selectionContext}`;
+  }
 
   // Add style preset
   const style = stylePresetSelect?.value;
@@ -138,7 +148,15 @@ async function generateDesign() {
   }
 
   if (generateBtn) generateBtn.disabled = true;
-  showStatus("Generating design with AI...", "loading");
+
+  const numVariations = parseInt(variationsSelect?.value || "1", 10);
+  showStatus(
+    `Generating ${numVariations} design${numVariations > 1 ? "s" : ""} with AI...`,
+    "loading",
+  );
+
+  let successCount = 0;
+  const spacing = 50; // Space between variations
 
   // Try Nano Banana Pro first, fallback to Gemini 3 Pro
   const models = [
@@ -147,27 +165,35 @@ async function generateDesign() {
     { name: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro" },
   ];
 
-  for (const model of models) {
-    try {
-      const enhancedDescription = buildEnhancedPrompt(description);
-      const { width, height } = getSvgDimensions();
+  for (let i = 0; i < numVariations; i++) {
+    showStatus(
+      `Generating variation ${i + 1} of ${numVariations}...`,
+      "loading",
+    );
 
-      console.log(`Trying model: ${model.displayName}`);
+    for (const model of models) {
+      try {
+        const enhancedDescription = buildEnhancedPrompt(description);
+        const { width, height } = getSvgDimensions();
 
-      // Call Gemini API
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model.name}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Generate a complete, valid SVG image based on this description: "${enhancedDescription}". 
+        console.log(`Trying model: ${model.displayName} (variation ${i + 1})`);
+
+        // Call Gemini API
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model.name}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: `Generate a complete, valid SVG image based on this description: "${enhancedDescription}". 
+
+IMPORTANT: Create a UNIQUE and DIFFERENT variation. Make it creative and distinct from other possible designs.
 
 CRITICAL REQUIREMENTS:
 - Output ONLY the SVG code, starting with <svg> and ending with </svg>
@@ -178,68 +204,81 @@ CRITICAL REQUIREMENTS:
 - Use creative shapes, paths, and visual elements
 - Do not include any explanation, markdown formatting, or code blocks
 - Just pure SVG XML code that starts with <svg and ends with </svg>`,
-                  },
-                ],
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.9,
+                maxOutputTokens: 8192,
               },
-            ],
-            generationConfig: {
-              temperature: 0.9,
-              maxOutputTokens: 8192,
-            },
-          }),
-        },
-      );
+            }),
+          },
+        );
 
-      if (!response.ok) {
-        const error = await response.json();
-        const errorMsg = error.error?.message || "API request failed";
-        console.warn(`${model.displayName} failed: ${errorMsg}`);
+        if (!response.ok) {
+          const error = await response.json();
+          const errorMsg = error.error?.message || "API request failed";
+          console.warn(`${model.displayName} failed: ${errorMsg}`);
+          // Try next model
+          continue;
+        }
+
+        const data = await response.json();
+        const svgCode = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!svgCode) {
+          console.warn(`${model.displayName} returned no SVG code`);
+          continue;
+        }
+
+        // Clean up the SVG code (remove markdown formatting if present)
+        let cleanSvg = svgCode.trim();
+        cleanSvg = cleanSvg.replace(/```svg\n?/g, "");
+        cleanSvg = cleanSvg.replace(/```\n?/g, "");
+        cleanSvg = cleanSvg.trim();
+
+        // Send SVG to plugin.ts for import with positioning info
+        parent.postMessage(
+          {
+            type: "import-svg",
+            svg: cleanSvg,
+            offsetX: i * (width + spacing), // Offset each variation horizontally
+          },
+          "*",
+        );
+
+        successCount++;
+        console.log(
+          `✓ Successfully generated variation ${i + 1} with ${model.displayName}`,
+        );
+
+        // Success, move to next variation
+        break;
+      } catch (error) {
+        console.warn(`${model.displayName} error (variation ${i + 1}):`, error);
         // Try next model
         continue;
       }
+    }
 
-      const data = await response.json();
-      const svgCode = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!svgCode) {
-        console.warn(`${model.displayName} returned no SVG code`);
-        continue;
-      }
-
-      // Clean up the SVG code (remove markdown formatting if present)
-      let cleanSvg = svgCode.trim();
-      cleanSvg = cleanSvg.replace(/```svg\n?/g, "");
-      cleanSvg = cleanSvg.replace(/```\n?/g, "");
-      cleanSvg = cleanSvg.trim();
-
-      // Send SVG to plugin.ts for import
-      parent.postMessage(
-        {
-          type: "import-svg",
-          svg: cleanSvg,
-        },
-        "*",
-      );
-
-      console.log(`✓ Successfully generated with ${model.displayName}`);
-      showStatus(
-        `Design generated successfully! (${model.displayName})`,
-        "success",
-      );
-      setTimeout(clearStatus, 3000);
-
-      if (generateBtn) generateBtn.disabled = false;
-      return; // Success, exit function
-    } catch (error) {
-      console.warn(`${model.displayName} error:`, error);
-      // Try next model
-      continue;
+    // If no model succeeded for this variation, log it but continue
+    if (successCount === i) {
+      console.error(`Failed to generate variation ${i + 1}`);
     }
   }
 
-  // If we get here, all models failed
-  console.error("All models failed to generate SVG");
-  showStatus("Failed to generate design with all available models", "error");
+  // Show final status
+  if (successCount > 0) {
+    showStatus(
+      `Successfully generated ${successCount} of ${numVariations} design${successCount > 1 ? "s" : ""}!`,
+      "success",
+    );
+    setTimeout(clearStatus, 3000);
+  } else {
+    showStatus("Failed to generate designs with all available models", "error");
+  }
+
   if (generateBtn) generateBtn.disabled = false;
 }
 
@@ -257,6 +296,17 @@ descriptionInput?.addEventListener("keydown", (e) => {
 // Listen plugin.ts messages
 window.addEventListener("message", (event) => {
   if (event.data.source === "penpot") {
-    document.body.dataset.theme = event.data.theme;
+    if (event.data.type === "themechange") {
+      document.body.dataset.theme = event.data.theme;
+    } else if (event.data.type === "selection-context") {
+      selectionContext = event.data.context || "";
+      console.log("Selection context updated:", selectionContext);
+
+      // Show/hide selection hint
+      const selectionHint = document.getElementById("selectionHint");
+      if (selectionHint) {
+        selectionHint.style.display = selectionContext ? "block" : "none";
+      }
+    }
   }
 });
