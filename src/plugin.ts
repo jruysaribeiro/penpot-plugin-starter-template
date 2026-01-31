@@ -159,14 +159,31 @@ setTimeout(() => {
   });
 }, 100);
 
-interface ImportSVGMessage {
-  type: "import-svg" | "insert-svg";
+interface PluginMessage {
+  type:
+    | "import-svg"
+    | "insert-svg"
+    | "import-pdf-page"
+    | "get-selected-text"
+    | "replace-text"
+    | "get-selected-image"
+    | "upload-cropped-image"
+    | "get-image-for-bg-removal"
+    | "upload-bg-removed-image";
   svg?: string;
   content?: string;
   offsetX?: number;
+  data?: ArrayBuffer;
+  pageNum?: number;
+  width?: number;
+  height?: number;
+  text?: string;
+  imageData?: number[];
+  originalX?: number;
+  originalY?: number;
 }
 
-penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
+penpot.ui.onMessage<PluginMessage>(async (message) => {
   if (message.type === "import-svg" || message.type === "insert-svg") {
     try {
       const svgContent = message.svg || message.content;
@@ -208,6 +225,7 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
   // Handle PDF page import
   if (message.type === "import-pdf-page") {
     try {
+      if (!message.data) throw new Error("No data provided");
       const imageData = new Uint8Array(message.data);
       const imageName = `PDF Page ${message.pageNum}`;
 
@@ -232,14 +250,16 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
           ];
 
           // Set dimensions based on the PDF page
-          imageShape.resize(message.width, message.height);
+          const width = message.width || 500;
+          const height = message.height || 500;
+          const pageNum = message.pageNum || 1;
+          imageShape.resize(width, height);
 
           // Position the image
           // For multiple pages, offset them vertically to avoid overlap
-          const verticalOffset = (message.pageNum - 1) * (message.height + 50);
-          imageShape.x = penpot.viewport.center.x - message.width / 2;
-          imageShape.y =
-            penpot.viewport.center.y - message.height / 2 + verticalOffset;
+          const verticalOffset = (pageNum - 1) * (height + 50);
+          imageShape.x = penpot.viewport.center.x - width / 2;
+          imageShape.y = penpot.viewport.center.y - height / 2 + verticalOffset;
 
           // Name the shape
           imageShape.name = imageName;
@@ -298,7 +318,7 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
     if (selection && selection.length > 0) {
       const shape = selection[0];
 
-      if (shape.type === "text") {
+      if (shape.type === "text" && message.text !== undefined) {
         shape.characters = message.text;
       }
     }
@@ -324,7 +344,7 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
           console.log("fillImage object:", imageFill.fillImage);
           console.log("fillImage keys:", Object.keys(imageFill.fillImage));
 
-          const imageInfo = {
+          const imageInfo: any = {
             x: shape.x,
             y: shape.y,
             width: shape.width,
@@ -416,6 +436,7 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
         const originalShape = selection[0];
 
         // Convert array back to Uint8Array - this is the actual cropped pixel data from canvas
+        if (!message.imageData) throw new Error("No image data provided");
         const imageData = new Uint8Array(message.imageData);
 
         console.log(
@@ -444,11 +465,15 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
             ];
 
             // Set dimensions to match the cropped area
-            croppedShape.resize(message.width, message.height);
+            const width = message.width || 100;
+            const height = message.height || 100;
+            const originalX = message.originalX || 0;
+            const originalY = message.originalY || 0;
+            croppedShape.resize(width, height);
 
             // Position at the same location as the crop was on the original
-            croppedShape.x = originalShape.x + message.originalX;
-            croppedShape.y = originalShape.y + message.originalY;
+            croppedShape.x = originalShape.x + originalX;
+            croppedShape.y = originalShape.y + originalY;
 
             // Name the shape
             croppedShape.name = "Cropped Image";
@@ -566,6 +591,7 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
         const originalShape = selection[0];
 
         // Convert array back to Uint8Array
+        if (!message.imageData) throw new Error("No image data provided");
         const imageData = new Uint8Array(message.imageData);
 
         console.log(
@@ -594,7 +620,9 @@ penpot.ui.onMessage<ImportSVGMessage>(async (message) => {
             ];
 
             // Set dimensions to match original
-            newShape.resize(message.width, message.height);
+            const width = message.width || 100;
+            const height = message.height || 100;
+            newShape.resize(width, height);
 
             // Position at the same location as original
             newShape.x = originalShape.x;

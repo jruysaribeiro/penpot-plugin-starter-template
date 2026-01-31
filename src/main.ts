@@ -63,25 +63,25 @@ const statusDiv = document.querySelector<HTMLDivElement>("#status");
 
 // Get option elements
 const modelSelect = document.querySelector<HTMLSelectElement>("#modelSelect");
-const stylePresetSelect =
-  document.querySelector<HTMLSelectElement>("#stylePreset");
-const colorSchemeSelect =
-  document.querySelector<HTMLSelectElement>("#colorScheme");
-const complexitySelect =
-  document.querySelector<HTMLSelectElement>("#complexity");
+// const stylePresetSelect =
+//   document.querySelector<HTMLSelectElement>("#stylePreset");
+// const colorSchemeSelect =
+//   document.querySelector<HTMLSelectElement>("#colorScheme");
+// const complexitySelect =
+//   document.querySelector<HTMLSelectElement>("#complexity");
 const sizeSelect = document.querySelector<HTMLSelectElement>("#size");
-const svgModeSelect = document.querySelector<HTMLSelectElement>("#svgMode");
+// const svgModeSelect = document.querySelector<HTMLSelectElement>("#svgMode");
 const variationsSelect =
   document.querySelector<HTMLSelectElement>("#variations");
-const includeGradients =
-  document.querySelector<HTMLInputElement>("#includeGradients");
-const includeShadows =
-  document.querySelector<HTMLInputElement>("#includeShadows");
-const includeTexture =
-  document.querySelector<HTMLInputElement>("#includeTexture");
-const useSelectionReference = document.querySelector<HTMLInputElement>(
-  "#useSelectionReference",
-);
+// const includeGradients =
+//   document.querySelector<HTMLInputElement>("#includeGradients");
+// const includeShadows =
+//   document.querySelector<HTMLInputElement>("#includeShadows");
+// const includeTexture =
+//   document.querySelector<HTMLInputElement>("#includeTexture");
+// const useSelectionReference = document.querySelector<HTMLInputElement>(
+//   "#useSelectionReference",
+// );
 
 // Image upload elements
 const dropZone = document.querySelector<HTMLDivElement>("#dropZone");
@@ -300,6 +300,8 @@ function clearStatus() {
   statusDiv.className = "status-message";
 }
 
+// Unused function - kept for reference
+/*
 function buildEnhancedPrompt(baseDescription: string): string {
   let enhancedPrompt = baseDescription;
 
@@ -350,6 +352,7 @@ function buildEnhancedPrompt(baseDescription: string): string {
 
   return enhancedPrompt;
 }
+*/
 
 function getSvgDimensions(): { width: number; height: number } {
   const size = sizeSelect?.value || "500x500";
@@ -1133,7 +1136,10 @@ const imageEditorStatus = document.getElementById("imageEditorStatus");
 let originalImage: HTMLImageElement | null = null;
 let selectedImageId = "";
 let isCropping = false;
+// Variables kept for potential future use but currently unused
+// @ts-ignore - Unused variable
 let cropStart: { x: number; y: number } | null = null;
+// @ts-ignore - Unused variable
 let cropEnd: { x: number; y: number } | null = null;
 let canvasScale = 1;
 
@@ -1282,6 +1288,8 @@ function setupCropInterface(imageInfo: any, shapeId: string) {
 }
 
 // Load image data to canvas (old function - keeping for reference but won't be called)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-ignore - Unused function kept for reference
 function loadImageToCanvas(imageDataUrl: string, shapeId: string) {
   const img = new Image();
   img.onload = () => {
