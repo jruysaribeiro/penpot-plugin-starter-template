@@ -1686,23 +1686,9 @@ function showImageEditorStatus(
 // Background Removal Feature
 // ========================================
 
-const removeBgApiKeyInput =
-  document.querySelector<HTMLInputElement>("#removeBgApiKey");
 const removeBgBtn = document.querySelector<HTMLButtonElement>("#removeBgBtn");
 const bgRemovalStatus =
   document.querySelector<HTMLDivElement>("#bgRemovalStatus");
-
-// Load saved Remove.bg API key
-const savedRemoveBgKey = localStorage.getItem("removebg_api_key");
-if (savedRemoveBgKey && removeBgApiKeyInput) {
-  removeBgApiKeyInput.value = savedRemoveBgKey;
-}
-
-// Save API key when it changes
-removeBgApiKeyInput?.addEventListener("change", (e) => {
-  const target = e.target as HTMLInputElement;
-  localStorage.setItem("removebg_api_key", target.value);
-});
 
 function showBgRemovalStatus(
   message: string,
@@ -1722,10 +1708,10 @@ function showBgRemovalStatus(
 }
 
 removeBgBtn?.addEventListener("click", async () => {
-  const apiKey = removeBgApiKeyInput?.value || "";
+  const apiKey = getApiKey();
 
   if (!apiKey) {
-    showBgRemovalStatus("Please enter your Remove.bg API key", "error");
+    showBgRemovalStatus("Please enter your Gemini API key in the AI Designer tab", "error");
     return;
   }
 
@@ -1751,43 +1737,70 @@ window.addEventListener("message", async (event) => {
       return;
     }
 
-    const apiKey = removeBgApiKeyInput?.value || "";
+    const apiKey = getApiKey();
 
     try {
-      showBgRemovalStatus("Removing background...", "loading");
+      showBgRemovalStatus("Removing background with Gemini AI...", "loading");
 
-      // Convert base64 to blob
+      // Get base64 data without the data URL prefix
       const base64Data = event.data.imageData.split(",")[1];
-      const binaryData = atob(base64Data);
-      const bytes = new Uint8Array(binaryData.length);
-      for (let i = 0; i < binaryData.length; i++) {
-        bytes[i] = binaryData.charCodeAt(i);
-      }
-      const blob = new Blob([bytes], { type: "image/png" });
 
-      // Call Remove.bg API
-      const formData = new FormData();
-      formData.append("image_file", blob, "image.png");
-      formData.append("size", "auto");
-
-      const response = await fetch("https://api.remove.bg/v1.0/removebg", {
-        method: "POST",
-        headers: {
-          "X-Api-Key": apiKey,
+      // Use Gemini to generate a mask and remove background
+      const model = modelSelect?.value || "gemini-2.0-flash-exp";
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: "Remove the background from this image. Return the subject with a transparent background. Make clean, precise edges.",
+                  },
+                  {
+                    inline_data: {
+                      mime_type: "image/png",
+                      data: base64Data,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.4,
+              topK: 32,
+              topP: 1,
+              maxOutputTokens: 4096,
+              responseMimeType: "image/png",
+            },
+          }),
         },
-        body: formData,
-      });
+      );
 
       if (!response.ok) {
         const error = await response.json();
         throw new Error(
-          error.errors?.[0]?.title || "Failed to remove background",
+          error.error?.message || "Failed to remove background",
         );
       }
 
-      const resultBlob = await response.blob();
-      const arrayBuffer = await resultBlob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      const result = await response.json();
+      const imageData = result.candidates?.[0]?.content?.parts?.[0]?.inline_data?.data;
+
+      if (!imageData) {
+        throw new Error("No image data returned from Gemini");
+      }
+
+      // Convert base64 to Uint8Array
+      const binaryData = atob(imageData);
+      const uint8Array = new Uint8Array(binaryData.length);
+      for (let i = 0; i < binaryData.length; i++) {
+        uint8Array[i] = binaryData.charCodeAt(i);
+      }
 
       showBgRemovalStatus("Uploading result to Penpot...", "loading");
 
