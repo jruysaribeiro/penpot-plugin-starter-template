@@ -1,4 +1,4 @@
-penpot.ui.open("Penpot AI Designer", "http://localhost:5173/index.html", {
+penpot.ui.open("Penpot AI Designer", "index.html", {
   width: 440,
   height: 600,
 });
