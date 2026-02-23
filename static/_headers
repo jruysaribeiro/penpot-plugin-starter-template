@@ -1,0 +1,5 @@
+/manifest.json
+  Access-Control-Allow-Origin: *
+
+/plugin.js
+  Access-Control-Allow-Origin: *
