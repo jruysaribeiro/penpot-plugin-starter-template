@@ -38,6 +38,6 @@ declare module "$app/types" {
 		};
 		Pathname(): "/" | "/api" | "/api/" | "/api/gemini" | "/api/gemini/";
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
-		Asset(): "/index.html" | "/manifest.json" | "/plugin.js" | "/plugin.js.map" | string & {};
+		Asset(): "/manifest.json" | "/plugin.js" | "/plugin.js.map" | "/ui.html" | string & {};
 	}
 }

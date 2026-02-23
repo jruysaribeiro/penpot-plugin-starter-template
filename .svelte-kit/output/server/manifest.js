@@ -7,26 +7,18 @@ function __memo(fn) {
 return {
 	appDir: "_app",
 	appPath: "_app",
-	assets: new Set(["index.html","manifest.json","plugin.js","plugin.js.map"]),
-	mimeTypes: {".html":"text/html",".json":"application/json",".js":"text/javascript",".map":"application/json"},
+	assets: new Set(["manifest.json","plugin.js","plugin.js.map","ui.html"]),
+	mimeTypes: {".json":"application/json",".js":"text/javascript",".map":"application/json",".html":"text/html"},
 	_: {
-		client: {start:"_app/immutable/entry/start.nEyyoehX.js",app:"_app/immutable/entry/app.Bu62fzjP.js",imports:["_app/immutable/entry/start.nEyyoehX.js","_app/immutable/chunks/gn4gLrbI.js","_app/immutable/chunks/BGr-OO7d.js","_app/immutable/chunks/DHV9NyHu.js","_app/immutable/entry/app.Bu62fzjP.js","_app/immutable/chunks/BGr-OO7d.js","_app/immutable/chunks/C5z3nB83.js","_app/immutable/chunks/B4fYklla.js","_app/immutable/chunks/DHV9NyHu.js","_app/immutable/chunks/jpnLiNc6.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.CoXrK3jA.js",app:"_app/immutable/entry/app.CM8JcvlG.js",imports:["_app/immutable/entry/start.CoXrK3jA.js","_app/immutable/chunks/CRLewJjD.js","_app/immutable/chunks/c3lXlv0J.js","_app/immutable/chunks/DJQG_C1D.js","_app/immutable/entry/app.CM8JcvlG.js","_app/immutable/chunks/c3lXlv0J.js","_app/immutable/chunks/C3lq1XMD.js","_app/immutable/chunks/CsR19vWY.js","_app/immutable/chunks/DJQG_C1D.js","_app/immutable/chunks/D3GAuJGK.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
 			__memo(() => import('./nodes/0.js')),
-			__memo(() => import('./nodes/1.js')),
-			__memo(() => import('./nodes/2.js'))
+			__memo(() => import('./nodes/1.js'))
 		],
 		remotes: {
 			
 		},
 		routes: [
-			{
-				id: "/",
-				pattern: /^\/$/,
-				params: [],
-				page: { layouts: [0,], errors: [1,], leaf: 2 },
-				endpoint: null
-			},
 			{
 				id: "/api/gemini",
 				pattern: /^\/api\/gemini\/?$/,

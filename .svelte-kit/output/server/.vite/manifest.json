@@ -83,15 +83,6 @@
       "_internal.js"
     ]
   },
-  "src/routes/+page.svelte": {
-    "file": "entries/pages/_page.svelte.js",
-    "name": "entries/pages/_page.svelte",
-    "src": "src/routes/+page.svelte",
-    "isEntry": true,
-    "css": [
-      "_app/immutable/assets/_page.C5EP94l1.css"
-    ]
-  },
   "src/routes/api/gemini/+server.ts": {
     "file": "entries/endpoints/api/gemini/_server.ts.js",
     "name": "entries/endpoints/api/gemini/_server.ts",

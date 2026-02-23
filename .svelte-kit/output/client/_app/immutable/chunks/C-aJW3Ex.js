@@ -1,1 +1,0 @@
-import{f as a}from"./BGr-OO7d.js";a();

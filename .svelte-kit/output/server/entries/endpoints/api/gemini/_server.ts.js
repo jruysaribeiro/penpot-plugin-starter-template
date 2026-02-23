@@ -1,16 +1,7 @@
 import { json } from "@sveltejs/kit";
-import dotenv from "dotenv";
-dotenv.config();
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-console.log(
-  "✓ API route loaded. API key status:",
-  GEMINI_API_KEY ? "✓ SET" : "✗ MISSING"
-);
+const GEMINI_API_KEY = "AIzaSyDleqR_sHrVPyffT3xftSYgW3II01asFaM";
 const GET = async () => {
   console.log("GET /api/gemini - Fetching models list");
-  if (!GEMINI_API_KEY) {
-    return json({ error: "API key not configured" }, { status: 500 });
-  }
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`
@@ -33,12 +24,13 @@ const GET = async () => {
 };
 const POST = async ({ request }) => {
   console.log("POST /api/gemini - Processing AI request");
-  if (!GEMINI_API_KEY) {
-    return json({ error: "API key not configured" }, { status: 500 });
-  }
   try {
     const { base64Data, model, action, prompt } = await request.json();
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    console.log(`Processing ${action} request with model: ${model}`);
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    console.log(
+      `Constructed URL: ${apiUrl.replace(GEMINI_API_KEY || "", "API_KEY")}`
+    );
     let requestBody = {};
     if (action === "background-removal") {
       requestBody = {
@@ -46,7 +38,7 @@ const POST = async ({ request }) => {
           {
             parts: [
               {
-                text: "Remove the background from this image. Return ONLY the subject with a transparent background as a PNG image. Do not add text or explanations - output the image directly."
+                text: "Remove the background from this image. Output a PNG image with an alpha channel where the background pixels have 0% opacity (fully transparent, alpha=0). The subject should remain fully opaque. Do not draw a checkerboard pattern - make the background actually transparent using the alpha channel."
               },
               {
                 inline_data: {
@@ -56,10 +48,7 @@ const POST = async ({ request }) => {
               }
             ]
           }
-        ],
-        generationConfig: {
-          response_mime_type: "image/png"
-        }
+        ]
       };
     } else if (action === "translation") {
       requestBody = {
@@ -76,6 +65,9 @@ const POST = async ({ request }) => {
     } else {
       return json({ error: "Invalid action" }, { status: 400 });
     }
+    console.log(
+      `Calling Gemini API: ${apiUrl.replace(GEMINI_API_KEY || "", "API_KEY")}`
+    );
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
@@ -83,17 +75,41 @@ const POST = async ({ request }) => {
       },
       body: JSON.stringify(requestBody)
     });
+    console.log(`Gemini API response status: ${response.status}`);
     if (!response.ok) {
-      const error = await response.json();
-      return json(
-        {
-          error: error.error?.message || "Generation failed"
-        },
-        { status: response.status }
-      );
+      const errorText = await response.text();
+      console.error(`Gemini API error response: ${errorText}`);
+      try {
+        const error = JSON.parse(errorText);
+        return json(
+          {
+            error: error.error?.message || "Generation failed"
+          },
+          { status: response.status }
+        );
+      } catch {
+        return json(
+          {
+            error: `API returned status ${response.status}: ${errorText}`
+          },
+          { status: response.status }
+        );
+      }
     }
-    const result = await response.json();
-    return json(result);
+    const resultText = await response.text();
+    try {
+      const result = JSON.parse(resultText);
+      console.log(
+        "Gemini API success response structure:",
+        JSON.stringify(result, null, 2).substring(0, 500)
+      );
+      return json(result);
+    } catch {
+      console.error(
+        `Failed to parse Gemini response: ${resultText.substring(0, 200)}`
+      );
+      return json({ error: "Invalid JSON response from API" }, { status: 500 });
+    }
   } catch (error) {
     console.error("Gemini API error:", error);
     return json(

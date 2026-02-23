@@ -12,8 +12,8 @@ return {
 	_: {
 		client: {start:"_app/immutable/entry/start.CoXrK3jA.js",app:"_app/immutable/entry/app.CM8JcvlG.js",imports:["_app/immutable/entry/start.CoXrK3jA.js","_app/immutable/chunks/CRLewJjD.js","_app/immutable/chunks/c3lXlv0J.js","_app/immutable/chunks/DJQG_C1D.js","_app/immutable/entry/app.CM8JcvlG.js","_app/immutable/chunks/c3lXlv0J.js","_app/immutable/chunks/C3lq1XMD.js","_app/immutable/chunks/CsR19vWY.js","_app/immutable/chunks/DJQG_C1D.js","_app/immutable/chunks/D3GAuJGK.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
-			__memo(() => import('./nodes/0.js')),
-			__memo(() => import('./nodes/1.js'))
+			__memo(() => import('../output/server/nodes/0.js')),
+			__memo(() => import('../output/server/nodes/1.js'))
 		],
 		remotes: {
 			
@@ -24,7 +24,7 @@ return {
 				pattern: /^\/api\/gemini\/?$/,
 				params: [],
 				page: null,
-				endpoint: __memo(() => import('./entries/endpoints/api/gemini/_server.ts.js'))
+				endpoint: __memo(() => import('../output/server/entries/endpoints/api/gemini/_server.ts.js'))
 			}
 		],
 		prerendered_routes: new Set([]),
@@ -36,3 +36,7 @@ return {
 	}
 }
 })();
+
+export const prerendered = new Set([]);
+
+export const base_path = "";
