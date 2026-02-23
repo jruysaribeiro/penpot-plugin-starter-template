@@ -383,10 +383,7 @@ function clearTraceStatus() {
 // ===========================
 
 // Set the worker source for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.mjs",
-  import.meta.url,
-).toString();
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 let pdfDocument: any = null;
 let currentPage = 1;
@@ -1149,12 +1146,14 @@ let cropRect = { x: 0, y: 0, width: 0, height: 0 };
 // Start crop mode
 startCropBtn?.addEventListener("click", () => {
   isCropping = true;
-  // Initialize crop rect to full canvas
+  // Initialize crop rect to 80% of canvas, centered, so handles are visible
+  const margin = Math.round(cropCanvas.width * 0.1);
+  const marginY = Math.round(cropCanvas.height * 0.1);
   cropRect = {
-    x: 0,
-    y: 0,
-    width: cropCanvas.width,
-    height: cropCanvas.height,
+    x: margin,
+    y: marginY,
+    width: cropCanvas.width - margin * 2,
+    height: cropCanvas.height - marginY * 2,
   };
   if (cropControls) cropControls.style.display = "block";
   drawCropHandles();
