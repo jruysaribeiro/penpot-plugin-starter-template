@@ -1,10 +1,9 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "@sveltejs/kit";
-import { env } from "$env/dynamic/private";
+import { GEMINI_API_KEY } from "$env/static/private";
 
 // GET /api/gemini - List available models
 export const GET: RequestHandler = async () => {
-  const GEMINI_API_KEY = env.GEMINI_API_KEY;
   console.log("GET /api/gemini - Fetching models list");
   if (!GEMINI_API_KEY) {
     return json({ error: "API key not configured" }, { status: 500 });
@@ -35,7 +34,6 @@ export const GET: RequestHandler = async () => {
 
 // POST /api/gemini - Generate content
 export const POST: RequestHandler = async ({ request }) => {
-  const GEMINI_API_KEY = env.GEMINI_API_KEY;
   console.log("POST /api/gemini - Processing AI request");
   if (!GEMINI_API_KEY) {
     return json({ error: "API key not configured" }, { status: 500 });
