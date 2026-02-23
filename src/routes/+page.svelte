@@ -1,5 +1,6 @@
 <script lang="ts">
-  const manifestUrl = "http://localhost:5173/manifest.json";
+  import { page } from "$app/stores";
+  $: manifestUrl = `${$page.url.origin}/manifest.json`;
 </script>
 
 <main>
