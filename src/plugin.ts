@@ -1,4 +1,4 @@
-penpot.ui.open("Penpot AI Designer", "", {
+penpot.ui.open("Penpot AI Designer", "http://localhost:5173/index.html", {
   width: 440,
   height: 600,
 });
@@ -442,6 +442,10 @@ penpot.ui.onMessage<PluginMessage>(async (message) => {
         console.log(
           "Uploading cropped image from canvas, size:",
           imageData.length,
+          "dimensions from message:",
+          message.width,
+          "x",
+          message.height,
         );
 
         // Upload the cropped image to Penpot
@@ -452,10 +456,37 @@ penpot.ui.onMessage<PluginMessage>(async (message) => {
         );
 
         if (imageAsset) {
+          console.log(
+            "Image asset created with dimensions:",
+            imageAsset.width,
+            "x",
+            imageAsset.height,
+          );
+
           // Create a new rectangle for the cropped image
           const croppedShape = penpot.createRectangle();
 
           if (croppedShape) {
+            // Get dimensions - prefer message dimensions, then asset dimensions, then original shape
+            const width =
+              message.width || imageAsset.width || originalShape.width || 100;
+            const height =
+              message.height ||
+              imageAsset.height ||
+              originalShape.height ||
+              100;
+            const originalX = message.originalX || 0;
+            const originalY = message.originalY || 0;
+
+            console.log("Setting cropped shape dimensions to:", width, height);
+
+            // Position first
+            croppedShape.x = originalShape.x + originalX;
+            croppedShape.y = originalShape.y + originalY;
+
+            // Resize to match dimensions
+            croppedShape.resize(width, height);
+
             // Set the cropped image as fill
             croppedShape.fills = [
               {
@@ -464,27 +495,24 @@ penpot.ui.onMessage<PluginMessage>(async (message) => {
               },
             ];
 
-            // Set dimensions to match the cropped area
-            const width = message.width || 100;
-            const height = message.height || 100;
-            const originalX = message.originalX || 0;
-            const originalY = message.originalY || 0;
-            croppedShape.resize(width, height);
-
-            // Position at the same location as the crop was on the original
-            croppedShape.x = originalShape.x + originalX;
-            croppedShape.y = originalShape.y + originalY;
-
             // Name the shape
             croppedShape.name = "Cropped Image";
 
             // Remove strokes
             croppedShape.strokes = [];
 
+            // Lock proportions
+            croppedShape.proportionLock = true;
+
             // Select the new shape
             penpot.selection = [croppedShape];
 
-            console.log("Cropped image uploaded and placed successfully");
+            console.log(
+              "Cropped image created. Final dimensions:",
+              croppedShape.width,
+              "x",
+              croppedShape.height,
+            );
 
             penpot.ui.sendMessage({
               source: "penpot",
@@ -597,6 +625,10 @@ penpot.ui.onMessage<PluginMessage>(async (message) => {
         console.log(
           "Uploading background-removed image, size:",
           imageData.length,
+          "dimensions:",
+          message.width,
+          "x",
+          message.height,
         );
 
         // Upload the image to Penpot
@@ -607,11 +639,45 @@ penpot.ui.onMessage<PluginMessage>(async (message) => {
         );
 
         if (imageAsset) {
+          console.log("Image asset created:", imageAsset);
+          console.log("Image asset width:", imageAsset.width);
+          console.log("Image asset height:", imageAsset.height);
+
           // Create a new rectangle for the image
           const newShape = penpot.createRectangle();
 
           if (newShape) {
-            // Set the image as fill
+            // Get dimensions - prefer message dimensions, fall back to asset dimensions or original shape
+            const width =
+              message.width || imageAsset.width || originalShape.width || 100;
+            const height =
+              message.height ||
+              imageAsset.height ||
+              originalShape.height ||
+              100;
+
+            console.log(
+              "Message dimensions:",
+              message.width,
+              "x",
+              message.height,
+            );
+            console.log(
+              "Asset dimensions:",
+              imageAsset.width,
+              "x",
+              imageAsset.height,
+            );
+            console.log("Setting shape dimensions to:", width, "x", height);
+
+            // Position at the same location as original
+            newShape.x = originalShape.x;
+            newShape.y = originalShape.y;
+
+            // Resize to correct dimensions
+            newShape.resize(width, height);
+
+            // Set the image as fill - DO NOT spread imageAsset, use it directly
             newShape.fills = [
               {
                 fillOpacity: 1,
@@ -619,25 +685,31 @@ penpot.ui.onMessage<PluginMessage>(async (message) => {
               },
             ];
 
-            // Set dimensions to match original
-            const width = message.width || 100;
-            const height = message.height || 100;
-            newShape.resize(width, height);
-
-            // Position at the same location as original
-            newShape.x = originalShape.x;
-            newShape.y = originalShape.y;
-
             // Name the shape
             newShape.name = "Background Removed";
 
             // Remove strokes
             newShape.strokes = [];
 
+            // Lock proportions to maintain aspect ratio
+            newShape.proportionLock = true;
+
+            console.log(
+              "Background-removed image created. Final dimensions:",
+              newShape.width,
+              "x",
+              newShape.height,
+            );
+
             // Select the new shape
             penpot.selection = [newShape];
 
-            console.log("Background-removed image uploaded successfully");
+            console.log(
+              "Background-removed image created with dimensions:",
+              newShape.width,
+              "x",
+              newShape.height,
+            );
 
             penpot.ui.sendMessage({
               source: "penpot",
