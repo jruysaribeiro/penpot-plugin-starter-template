@@ -1,20 +1,10 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "@sveltejs/kit";
-import dotenv from "dotenv";
-
-// Load environment variables
-dotenv.config();
-
-// Access environment variable
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-console.log(
-  "✓ API route loaded. API key status:",
-  GEMINI_API_KEY ? "✓ SET" : "✗ MISSING",
-);
+import { env } from "$env/dynamic/private";
 
 // GET /api/gemini - List available models
 export const GET: RequestHandler = async () => {
+  const GEMINI_API_KEY = env.GEMINI_API_KEY;
   console.log("GET /api/gemini - Fetching models list");
   if (!GEMINI_API_KEY) {
     return json({ error: "API key not configured" }, { status: 500 });
@@ -45,6 +35,7 @@ export const GET: RequestHandler = async () => {
 
 // POST /api/gemini - Generate content
 export const POST: RequestHandler = async ({ request }) => {
+  const GEMINI_API_KEY = env.GEMINI_API_KEY;
   console.log("POST /api/gemini - Processing AI request");
   if (!GEMINI_API_KEY) {
     return json({ error: "API key not configured" }, { status: 500 });
