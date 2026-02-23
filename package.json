@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite dev\" \"vite build --config vite.plugin.config.ts --watch\"",
-    "build": "npm run build:plugin && npm run build:server",
+    "build": "npm run build:server && npm run build:plugin",
     "build:plugin": "vite build --config vite.plugin.config.ts",
     "build:server": "vite build",
     "preview": "vite preview"
